@@ -25,7 +25,7 @@ test_requirements = [
 
 setup(
     name='tendril-pricing',
-    version='0.1.2',
+    version='0.1.3',
     description="Tendril Pricing Infrastructure",
     long_description=readme,
     author="Chintalagiri Shashank",

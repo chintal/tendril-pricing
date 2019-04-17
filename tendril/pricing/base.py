@@ -18,8 +18,10 @@
 
 from tendril.utils.types.currency import CurrencyValue
 from tendril.schema.base import NakedSchemaObject
+
 from .tax import TaxMixin
 from .addons import AddonMixin
+from .discount import DiscountMixin
 
 
 class PricingBase(NakedSchemaObject):
@@ -43,7 +45,7 @@ class PricingBase(NakedSchemaObject):
                                   self.effective_price)
 
 
-class StructuredUnitPrice(PricingBase, TaxMixin, AddonMixin):
+class StructuredUnitPrice(PricingBase, DiscountMixin, TaxMixin, AddonMixin):
     def __init__(self, *args, **kwargs):
         self._parent = kwargs.pop('parent', None)
         super(StructuredUnitPrice, self).__init__(*args, **kwargs)
@@ -63,14 +65,6 @@ class StructuredUnitPrice(PricingBase, TaxMixin, AddonMixin):
     @property
     def base_price(self):
         return self.base
-
-    def apply_discount(self, discount, desc):
-        self._discounts.append((desc, discount))
-
-    @property
-    def discounts(self):
-        for discount in self._discounts:
-            yield discount
 
     @property
     def effective_price(self):
