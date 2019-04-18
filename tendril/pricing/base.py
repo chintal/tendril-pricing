@@ -16,16 +16,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from tendril.utils.types.currency import CurrencyValue
 from tendril.schema.base import NakedSchemaObject
-
-from .tax import TaxMixin
-from .addons import AddonMixin
-from .discount import DiscountMixin
 
 
 class PricingBase(NakedSchemaObject):
     def __init__(self, *args, **kwargs):
+        self.qty = kwargs.pop('qty', 1)
+        self.unit = 1
         super(PricingBase, self).__init__(*args, **kwargs)
 
     @property
@@ -37,53 +34,54 @@ class PricingBase(NakedSchemaObject):
         raise NotImplementedError
 
     @property
+    def extended_price(self):
+        return self.effective_price * (self.qty / self.unit)
+
+    @property
     def total_price(self):
         raise NotImplementedError
 
+    def reset_qty(self):
+        self.qty = self.unit
+
     def __repr__(self):
-        return "<{0} {1}>".format(self.__class__.__name__,
-                                  self.effective_price)
+        return "<{0} {1} {2} {3}>" \
+               "".format(self.__class__.__name__,
+                         self.base_price,
+                         self.effective_price,
+                         self.total_price)
 
 
-class StructuredUnitPrice(PricingBase, DiscountMixin, TaxMixin, AddonMixin):
-    def __init__(self, *args, **kwargs):
-        self._parent = kwargs.pop('parent', None)
-        super(StructuredUnitPrice, self).__init__(*args, **kwargs)
-        self._addons = []
-        self._discounts = []
-        self._taxes = []
-
-    def elements(self):
-        e = super(PricingBase, self).elements()
-        e.update({
-            'base':   self._p('base',   parser=CurrencyValue),
-        })
-        e.update(TaxMixin.elements(self))
-        e.update(AddonMixin.elements(self))
-        return e
+class SimplePricingRow(PricingBase):
+    def __init__(self, desc, unit, price, tax, qty):
+        super(SimplePricingRow, self).__init__(qty)
+        self.desc = desc
+        self.unit = unit
+        self.price = price
+        self.tax = tax
+        self.qty = qty
 
     @property
     def base_price(self):
-        return self.base
+        return self.price
 
     @property
     def effective_price(self):
-        ep = self.base
-        for _, discount in self.discounts:
-            ep = ep - discount
-        return ep
+        return self.base_price
+
+    @property
+    def taxes(self):
+        for tax in self.tax:
+            if tax.rate == 0:
+                continue
+            yield (tax.ident, self.effective_price * tax.rate)
 
     @property
     def total_price(self):
-        tp = self.effective_price
+        tp = self.extended_price
         for _, tax in self.taxes:
             tp = tp + tax
         return tp
-
-    def reset(self):
-        AddonMixin.reset_addons(self)
-        DiscountMixin.reset_dicounts(self)
-        TaxMixin.reset_tax_rates(self)
 
 
 class PriceCollector(object):

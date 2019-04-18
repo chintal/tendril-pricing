@@ -17,7 +17,6 @@
 
 
 from tendril.utils.types import ParseException
-from tendril.utils.types.time import DateSpan
 from tendril.utils.types.currency import CurrencyValue
 from tendril.utils.types.unitbase import Percentage
 
@@ -26,17 +25,16 @@ from tendril.schema.helpers import SchemaObjectSet
 
 from .tax import TaxDefinitionList
 from .tax import DEFAULT_TAX
+from .base import SimplePricingRow
 
 
 class AddonDefinition(NakedSchemaObject):
     def elements(self):
         e = super(AddonDefinition, self).elements()
         e.update({
-            'desc':     self._p('desc'),
-            'price':    self._p('price',    parser=(Percentage, CurrencyValue)),
-            'tax':      self._p('tax',      required=False, parser=TaxDefinitionList),
-            'unit':     self._p('unit',     required=False, default=1),
-            'unittype': self._p('unittype', required=False, default='int'),
+            'desc':      self._p('desc'),
+            'price':     self._p('price',    parser=(Percentage, CurrencyValue)),
+            'tax':       self._p('tax',      required=False, parser=TaxDefinitionList),
         })
         return e
 
@@ -53,16 +51,11 @@ class AddonMixin(NakedSchemaObject):
         return {'addons': self._p('addons', parser=AddonDefinitionSet,
                                   required=False, default=[])}
 
-    def include_addon(self, addon, qty=1, price=None, tax='inherit'):
+    def include_addon(self, addon, unit=1, qty=1, price=None, tax='inherit'):
         if addon in self.addons.keys():
             desc = self.addons[addon].desc
-            if self.addons[addon].unittype == 'DateSpan':
-                unit = DateSpan(self.addons[addon].unit)
-            else:
-                unit = self.addons[addon].unit
         else:
             desc = addon
-            unit = 1
 
         if price:
             if not isinstance(price, (Percentage, CurrencyValue)):
@@ -73,13 +66,13 @@ class AddonMixin(NakedSchemaObject):
         else:
             price = self.addons[addon].price
 
-        self._addons.append((desc, qty, price, tax, unit))
+        self._addons.append((desc, unit, price, tax, qty))
 
     @property
     def included_addons(self):
-        for desc, qty, price, tax, unit in self._addons:
+        for desc, unit, price, tax, qty in self._addons:
             if isinstance(price, Percentage):
-                price = self.effective_price * price
+                price = self.extended_price * price
 
             if tax:
                 if tax == 'inherit':
@@ -89,7 +82,14 @@ class AddonMixin(NakedSchemaObject):
             else:
                 tax = TaxDefinitionList(content=DEFAULT_TAX)
 
-            yield desc, qty, price, tax, unit
+            yield SimplePricingRow(desc, unit, price, tax, qty)
+
+    def get_included_addon(self, addon):
+        if addon in self.addons.keys():
+            addon = self.addons[addon].desc
+        for row in self._addons:
+            if row.desc == addon:
+                return row
 
     def reset_addons(self):
         self._addons = []
