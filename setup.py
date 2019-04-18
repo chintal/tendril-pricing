@@ -16,7 +16,6 @@ with open('README.rst') as readme_file:
 requirements = [
     'tendril-utils-types>=0.1.8',
     'tendril-schema>=0.1.11',
-
 ]
 
 test_requirements = [
@@ -25,7 +24,7 @@ test_requirements = [
 
 setup(
     name='tendril-pricing',
-    version='0.1.5',
+    version='0.1.6',
     description="Tendril Pricing Infrastructure",
     long_description=readme,
     author="Chintalagiri Shashank",

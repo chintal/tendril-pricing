@@ -17,6 +17,7 @@
 
 
 from tendril.schema.base import NakedSchemaObject
+from .discount import DiscountMixin
 
 
 class PricingBase(NakedSchemaObject):
@@ -31,7 +32,7 @@ class PricingBase(NakedSchemaObject):
 
     @property
     def effective_price(self):
-        raise NotImplementedError
+        return self.base_price
 
     @property
     def extended_price(self):
@@ -39,7 +40,7 @@ class PricingBase(NakedSchemaObject):
 
     @property
     def total_price(self):
-        raise NotImplementedError
+        return self.extended_price
 
     def reset_qty(self):
         self.qty = self.unit
@@ -52,7 +53,7 @@ class PricingBase(NakedSchemaObject):
                          self.total_price)
 
 
-class SimplePricingRow(PricingBase):
+class SimplePricingRow(DiscountMixin, PricingBase):
     def __init__(self, desc, unit, price, tax, qty):
         super(SimplePricingRow, self).__init__(qty)
         self.desc = desc
@@ -60,21 +61,18 @@ class SimplePricingRow(PricingBase):
         self.price = price
         self.tax = tax
         self.qty = qty
+        self._discounts = []
 
     @property
     def base_price(self):
         return self.price
 
     @property
-    def effective_price(self):
-        return self.base_price
-
-    @property
     def taxes(self):
         for tax in self.tax:
             if tax.rate == 0:
                 continue
-            yield (tax.ident, self.effective_price * tax.rate)
+            yield (tax.ident, self.extended_price * tax.rate)
 
     @property
     def total_price(self):

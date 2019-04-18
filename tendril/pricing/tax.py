@@ -70,7 +70,7 @@ class TaxMixin(NakedSchemaObject, GSTMixin):
         for tax in self.tax:
             if tax.rate == 0:
                 continue
-            yield (tax.ident, self.effective_price * tax.rate)
+            yield (tax.ident, self.extended_price * tax.rate)
 
     def reset_tax_rates(self):
         pass

@@ -51,7 +51,8 @@ class AddonMixin(NakedSchemaObject):
         return {'addons': self._p('addons', parser=AddonDefinitionSet,
                                   required=False, default=[])}
 
-    def include_addon(self, addon, unit=1, qty=1, price=None, tax='inherit'):
+    def include_addon(self, addon, unit=1, qty=1, price=None,
+                      tax='inherit', discount=None):
         if addon in self.addons.keys():
             desc = self.addons[addon].desc
         else:
@@ -66,11 +67,11 @@ class AddonMixin(NakedSchemaObject):
         else:
             price = self.addons[addon].price
 
-        self._addons.append((desc, unit, price, tax, qty))
+        self._addons.append((desc, unit, price, tax, qty, discount))
 
     @property
     def included_addons(self):
-        for desc, unit, price, tax, qty in self._addons:
+        for desc, unit, price, tax, qty, discount in self._addons:
             if isinstance(price, Percentage):
                 price = self.extended_price * price
 
@@ -81,13 +82,15 @@ class AddonMixin(NakedSchemaObject):
                     tax = TaxDefinitionList(content=tax)
             else:
                 tax = TaxDefinitionList(content=DEFAULT_TAX)
-
-            yield SimplePricingRow(desc, unit, price, tax, qty)
+            row = SimplePricingRow(desc, unit, price, tax, qty)
+            if discount:
+                row.apply_discount(*discount)
+            yield row
 
     def get_included_addon(self, addon):
         if addon in self.addons.keys():
             addon = self.addons[addon].desc
-        for row in self._addons:
+        for row in self.included_addons:
             if row.desc == addon:
                 return row
 

@@ -32,13 +32,20 @@ class DiscountMixin(object):
 
     @property
     def discounts(self):
-        ep = self.base
+        ep = self.base_price
         for name, discount in self._discounts:
             if isinstance(discount, Percentage):
                 name = "{0} ({1})".format(name, discount)
                 discount = ep * discount
             ep = ep - discount
             yield name, discount
+
+    @property
+    def effective_price(self):
+        ep = self.base_price
+        for _, discount in self.discounts:
+            ep = ep - discount
+        return ep
 
     def reset_dicounts(self):
         self._discounts = []
