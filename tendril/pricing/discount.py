@@ -39,3 +39,6 @@ class DiscountMixin(object):
                 discount = ep * discount
             ep = ep - discount
             yield name, discount
+
+    def reset_dicounts(self):
+        self._discounts = []

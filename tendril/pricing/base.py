@@ -80,6 +80,11 @@ class StructuredUnitPrice(PricingBase, DiscountMixin, TaxMixin, AddonMixin):
             tp = tp + tax
         return tp
 
+    def reset(self):
+        AddonMixin.reset_addons(self)
+        DiscountMixin.reset_dicounts(self)
+        TaxMixin.reset_tax_rates(self)
+
 
 class PriceCollector(object):
     pass

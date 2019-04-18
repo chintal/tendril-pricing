@@ -71,3 +71,6 @@ class TaxMixin(NakedSchemaObject, GSTMixin):
             if tax.rate == 0:
                 continue
             yield (tax.ident, self.effective_price * tax.rate)
+
+    def reset_tax_rates(self):
+        pass

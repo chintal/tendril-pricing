@@ -17,6 +17,7 @@
 
 
 from tendril.utils.types import ParseException
+from tendril.utils.types.time import DateSpan
 from tendril.utils.types.currency import CurrencyValue
 from tendril.utils.types.unitbase import Percentage
 
@@ -31,9 +32,11 @@ class AddonDefinition(NakedSchemaObject):
     def elements(self):
         e = super(AddonDefinition, self).elements()
         e.update({
-            'desc':  self._p('desc'),
-            'price': self._p('price', parser=(Percentage, CurrencyValue)),
-            'tax':   self._p('tax',   required=False, parser=TaxDefinitionList)
+            'desc':     self._p('desc'),
+            'price':    self._p('price',    parser=(Percentage, CurrencyValue)),
+            'tax':      self._p('tax',      required=False, parser=TaxDefinitionList),
+            'unit':     self._p('unit',     required=False, default=1),
+            'unittype': self._p('unittype', required=False, default='int'),
         })
         return e
 
@@ -51,6 +54,16 @@ class AddonMixin(NakedSchemaObject):
                                   required=False, default=[])}
 
     def include_addon(self, addon, qty=1, price=None, tax='inherit'):
+        if addon in self.addons.keys():
+            desc = self.addons[addon].desc
+            if self.addons[addon].unittype == 'DateSpan':
+                unit = DateSpan(self.addons[addon].unit)
+            else:
+                unit = self.addons[addon].unit
+        else:
+            desc = addon
+            unit = 1
+
         if price:
             if not isinstance(price, (Percentage, CurrencyValue)):
                 try:
@@ -60,19 +73,23 @@ class AddonMixin(NakedSchemaObject):
         else:
             price = self.addons[addon].price
 
-        if isinstance(price, Percentage):
-            price = self.effective_price * price
-
-        if tax:
-            if tax == 'inherit':
-                tax = self.tax
-            elif not isinstance(tax, TaxDefinitionList):
-                tax = TaxDefinitionList(content=tax)
-        else:
-            tax = TaxDefinitionList(content=DEFAULT_TAX)
-
-        self._addons.append((addon, qty, price, tax))
+        self._addons.append((desc, qty, price, tax, unit))
 
     @property
     def included_addons(self):
-        return self._addons
+        for desc, qty, price, tax, unit in self._addons:
+            if isinstance(price, Percentage):
+                price = self.effective_price * price
+
+            if tax:
+                if tax == 'inherit':
+                    tax = self.tax
+                elif not isinstance(tax, TaxDefinitionList):
+                    tax = TaxDefinitionList(content=tax)
+            else:
+                tax = TaxDefinitionList(content=DEFAULT_TAX)
+
+            yield desc, qty, price, tax, unit
+
+    def reset_addons(self):
+        self._addons = []
