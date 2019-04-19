@@ -24,7 +24,7 @@ from .addons import AddonMixin
 from .discount import DiscountMixin
 
 
-class StructuredUnitPrice(DiscountMixin, PricingBase, TaxMixin, AddonMixin):
+class StructuredUnitPrice(DiscountMixin, TaxMixin, PricingBase, AddonMixin):
     def __init__(self, *args, **kwargs):
         self._parent = kwargs.pop('parent', None)
         super(StructuredUnitPrice, self).__init__(*args, **kwargs)
@@ -33,10 +33,8 @@ class StructuredUnitPrice(DiscountMixin, PricingBase, TaxMixin, AddonMixin):
         self._taxes = []
 
     def elements(self):
-        e = super(PricingBase, self).elements()
-        e.update({
-            'base':   self._p('base',   parser=CurrencyValue),
-        })
+        e = super(StructuredUnitPrice, self).elements()
+        e.update({'base':   self._p('base',   parser=CurrencyValue)})
         e.update(TaxMixin.elements(self))
         e.update(AddonMixin.elements(self))
         return e
@@ -44,13 +42,6 @@ class StructuredUnitPrice(DiscountMixin, PricingBase, TaxMixin, AddonMixin):
     @property
     def base_price(self):
         return self.base
-
-    @property
-    def total_price(self):
-        tp = self.extended_price
-        for _, tax in self.taxes:
-            tp = tp + tax
-        return tp
 
     def reset(self):
         PricingBase.reset_qty(self)

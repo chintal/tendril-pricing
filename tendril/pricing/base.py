@@ -16,14 +16,16 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from six import iteritems
 from tendril.schema.base import NakedSchemaObject
 from .discount import DiscountMixin
+from .tax import TaxMixin
 
 
 class PricingBase(NakedSchemaObject):
     def __init__(self, *args, **kwargs):
         self.qty = kwargs.pop('qty', 1)
-        self.unit = 1
+        self.unit = kwargs.pop('unit', 1)
         super(PricingBase, self).__init__(*args, **kwargs)
 
     @property
@@ -53,34 +55,122 @@ class PricingBase(NakedSchemaObject):
                          self.total_price)
 
 
-class SimplePricingRow(DiscountMixin, PricingBase):
-    def __init__(self, desc, unit, price, tax, qty):
-        super(SimplePricingRow, self).__init__(qty)
-        self.desc = desc
-        self.unit = unit
-        self.price = price
-        self.tax = tax
-        self.qty = qty
+class SimplePricingRow(DiscountMixin, TaxMixin, PricingBase):
+    def __init__(self, *args, **kwargs):
+        self.price = kwargs.pop('price', 0)
+        self.tax = kwargs.pop('tax', None)
+        self.desc = kwargs.pop('desc')
+        super(SimplePricingRow, self).__init__({}, *args, **kwargs)
         self._discounts = []
+
+    def elements(self):
+        return {}
 
     @property
     def base_price(self):
         return self.price
 
     @property
-    def taxes(self):
-        for tax in self.tax:
-            if tax.rate == 0:
-                continue
-            yield (tax.ident, self.extended_price * tax.rate)
+    def included_addons(self):
+        return {}
+
+
+class PriceCollector(PricingBase):
+    def __init__(self, *args, **kwargs):
+        self.unit = 1
+        self.qty = 1
+        super(PriceCollector, self).__init__({}, *args, **kwargs)
+        self.items = []
+
+    def elements(self):
+        return {}
+
+    @property
+    def base_price(self):
+        return sum([i.base_price * (i.qty/i.unit) for i in self.items])
+
+    @property
+    def effective_price(self):
+        return sum([i.effective_price * (i.qty/i.unit) for i in self.items])
+
+    @property
+    def extended_price(self):
+        return sum([i.extended_price for i in self.items])
 
     @property
     def total_price(self):
-        tp = self.extended_price
-        for _, tax in self.taxes:
-            tp = tp + tax
-        return tp
+        return sum([i.total_price for i in self.items])
 
+    @property
+    def grand_total(self):
+        return self.extended_price + \
+               sum([x[1] for x in self.taxes]) + \
+               sum(x.extended_price for x in self.included_addons)
 
-class PriceCollector(object):
-    pass
+    @property
+    def discounts(self):
+        collector = {}
+
+        def _get_item_discounts(litem):
+            for lident, ldiscount in litem.discounts:
+                if lident in collector.keys():
+                    collector[lident] += ldiscount
+                else:
+                    collector[lident] = ldiscount
+
+        for item in self.items:
+            _get_item_discounts(item)
+
+        for item in self.included_addons:
+            _get_item_discounts(item)
+
+        for ident, discount in iteritems(collector):
+            yield (ident, discount)
+
+    @property
+    def taxes(self):
+        collector = {}
+
+        def _get_item_taxes(litem):
+            for lident, ltax in litem.taxes:
+                if lident in collector.keys():
+                    collector[lident] += ltax
+                else:
+                    collector[lident] = ltax
+
+        for item in self.items:
+            _get_item_taxes(item)
+
+        for item in self.included_addons:
+            _get_item_taxes(item)
+
+        for ident, tax in iteritems(collector):
+            yield (ident, tax)
+
+    @property
+    def included_addons(self):
+        collector = {}
+
+        def _get_item_addons(litem):
+            for laddon in litem.included_addons:
+                if laddon.desc in collector.keys():
+                    collector[laddon.desc].append(laddon)
+                else:
+                    collector[laddon.desc] = PriceCollector()
+                    collector[laddon.desc].desc = laddon.desc
+                    collector[laddon.desc].append(laddon)
+
+        for item in self.items:
+            _get_item_addons(item)
+
+        for _, addon in iteritems(collector):
+            yield addon
+
+    def append(self, item):
+        self.items.append(item)
+
+    def __len__(self):
+        return len(self.items)
+
+    def __getitem__(self, item):
+        return self.items[item]

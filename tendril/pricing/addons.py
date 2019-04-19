@@ -82,7 +82,10 @@ class AddonMixin(NakedSchemaObject):
                     tax = TaxDefinitionList(content=tax)
             else:
                 tax = TaxDefinitionList(content=DEFAULT_TAX)
-            row = SimplePricingRow(desc, unit, price, tax, qty)
+            row = SimplePricingRow(
+                desc=desc, unit=unit, price=price, tax=tax, qty=qty,
+                vctx=self._validation_context.child('IncludeAddon')
+            )
             if discount:
                 row.apply_discount(*discount)
             yield row

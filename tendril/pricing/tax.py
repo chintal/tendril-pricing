@@ -66,11 +66,25 @@ class TaxMixin(NakedSchemaObject, GSTMixin):
                 return tax
 
     @property
+    def unit_taxes(self):
+        for tax in self.tax:
+            if tax.rate == 0:
+                continue
+            yield (tax.ident, self.effective_price * tax.rate)
+
+    @property
     def taxes(self):
         for tax in self.tax:
             if tax.rate == 0:
                 continue
             yield (tax.ident, self.extended_price * tax.rate)
+
+    @property
+    def total_price(self):
+        tp = self.extended_price
+        for _, tax in self.taxes:
+            tp = tp + tax
+        return tp
 
     def reset_tax_rates(self):
         pass
