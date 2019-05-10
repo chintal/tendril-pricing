@@ -62,11 +62,12 @@ class PriceCollector(TaxMixin, PricingBase, AddonMixin):
         collector = {}
 
         def _get_item_discounts(litem):
+            qty = litem.iqty
             for lident, ldiscount in litem.discounts:
                 if lident in collector.keys():
-                    collector[lident] += ldiscount
+                    collector[lident] += ldiscount * qty
                 else:
-                    collector[lident] = ldiscount
+                    collector[lident] = ldiscount * qty
 
         for item in self.items:
             _get_item_discounts(item)

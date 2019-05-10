@@ -29,7 +29,7 @@ class GSTMixin(object):
     def override_tax_rate(self, rate, tax=None):
         raise NotImplementedError
 
-    def gst_set_local(self):
+    def gst_set_national(self):
         sgst = self._get_tax('SGST')
         cgst = self._get_tax('CGST')
         if sgst.rate == 0:
@@ -40,7 +40,7 @@ class GSTMixin(object):
         self.override_tax_rate(0,                     tax='CGST')
         self.override_tax_rate(0,                     tax='SGST')
 
-    def gst_set_national(self):
+    def gst_set_local(self):
         igst = self._get_tax('IGST')
         if igst.rate == 0:
             return
