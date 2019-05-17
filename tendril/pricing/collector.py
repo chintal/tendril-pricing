@@ -29,8 +29,10 @@ class PriceCollector(TaxMixin, PricingBase, AddonMixin):
         super(PriceCollector, self).__init__({}, *args, **kwargs)
         self.tax = None
         self.items = []
+        self.optional_items = []
         self.addons = {}
         self._addons = []
+        self._optional_addons = []
 
     def elements(self):
         return {}
@@ -120,10 +122,35 @@ class PriceCollector(TaxMixin, PricingBase, AddonMixin):
         for row in super(PriceCollector, self).included_addons:
             yield row
 
-    def add_item(self, item):
+    @property
+    def optional_addons(self):
+        collector = {}
+
+        def _get_item_optional_addons(litem):
+            for laddon in litem.optional_addons:
+                if laddon.desc in collector.keys():
+                    collector[laddon.desc].add_item(laddon)
+                else:
+                    collector[laddon.desc] = PriceCollector()
+                    collector[laddon.desc].desc = laddon.desc
+                    collector[laddon.desc].add_item(laddon)
+
+        for item in self.items:
+            _get_item_optional_addons(item)
+
+        for _, addon in iteritems(collector):
+            yield addon
+
+        for row in super(PriceCollector, self).optional_addons:
+            yield row
+
+    def add_item(self, item, optional=False):
         if self.tax is None:
             self.tax = item.tax
-        self.items.append(item)
+        if not optional:
+            self.items.append(item)
+        else:
+            self.optional_items.append(item)
 
     def __len__(self):
         return len(self.items)

@@ -29,6 +29,7 @@ class StructuredUnitPrice(DiscountMixin, TaxMixin, PricingBase, AddonMixin):
         self._parent = kwargs.pop('parent', None)
         super(StructuredUnitPrice, self).__init__(*args, **kwargs)
         self._addons = []
+        self._optional_addons = []
         self._discounts = []
         self._taxes = []
 

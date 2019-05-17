@@ -52,7 +52,7 @@ class AddonMixin(NakedSchemaObject):
                                   required=False, default=[])}
 
     def include_addon(self, addon, unit=1, qty=1, price=None,
-                      tax='inherit', discount=None):
+                      tax='inherit', discount=None, optional=False):
         if addon in self.addons.keys():
             desc = self.addons[addon].desc
         else:
@@ -67,7 +67,10 @@ class AddonMixin(NakedSchemaObject):
         else:
             price = self.addons[addon].price
 
-        self._addons.append((desc, unit, price, tax, qty, discount))
+        if not optional:
+            self._addons.append((desc, unit, price, tax, qty, discount))
+        else:
+            self._optional_addons.append((desc, unit, price, tax, qty, discount))
 
     @property
     def included_addons(self):
@@ -90,6 +93,27 @@ class AddonMixin(NakedSchemaObject):
                 row.apply_discount(*discount)
             yield row
 
+    @property
+    def optional_addons(self):
+        for desc, unit, price, tax, qty, discount in self._optional_addons:
+            if isinstance(price, Percentage):
+                price = self.extended_price * price
+
+            if tax:
+                if tax == 'inherit':
+                    tax = self.tax
+                elif not isinstance(tax, TaxDefinitionList):
+                    tax = TaxDefinitionList(content=tax)
+            else:
+                tax = TaxDefinitionList(content=DEFAULT_TAX)
+            row = SimplePricingRow(
+                desc=desc, unit=unit, price=price, tax=tax, qty=qty,
+                vctx=self._validation_context.child('OptionalAddon')
+            )
+            if discount:
+                row.apply_discount(*discount)
+            yield row
+
     def get_included_addon(self, addon):
         if addon in self.addons.keys():
             addon = self.addons[addon].desc
@@ -97,5 +121,13 @@ class AddonMixin(NakedSchemaObject):
             if row.desc == addon:
                 return row
 
+    def get_optional_addon(self, addon):
+        if addon in self.addons.keys():
+            addon = self.addons[addon].desc
+        for row in self.optional_addons:
+            if row.desc == addon:
+                return row
+
     def reset_addons(self):
         self._addons = []
+        self._optional_addons = []
