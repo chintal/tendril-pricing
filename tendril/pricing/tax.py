@@ -51,6 +51,9 @@ class TaxMixin(NakedSchemaObject, GSTMixin):
         return {'tax': self._p('tax', parser=TaxDefinitionList,
                                required=False, default=DEFAULT_TAX)}
 
+    def override_taxes(self, taxdefinition):
+        self.tax = taxdefinition
+
     def override_tax_rate(self, rate, tax=None):
         if not isinstance(rate, Percentage):
             rate = Percentage(rate)
