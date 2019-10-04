@@ -26,7 +26,7 @@ from tendril.utils.types.currency import CurrencyValue
 from tendril.utils.types.unitbase import Percentage
 
 from tendril.schema.base import NakedSchemaObject
-from tendril.schema.helpers import SchemaObjectSet
+from tendril.schema.helpers import SchemaObjectMapping
 
 from .tax import TaxDefinitionList
 from .tax import DEFAULT_TAX
@@ -47,7 +47,7 @@ class AddonDefinition(NakedSchemaObject):
         return "<{0} {1}>".format(self.__class__.__name__, self.desc, self.price)
 
 
-class AddonDefinitionSet(SchemaObjectSet):
+class AddonDefinitionSet(SchemaObjectMapping):
     _objtype = AddonDefinition
 
 
